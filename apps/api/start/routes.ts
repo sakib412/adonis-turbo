@@ -13,6 +13,6 @@ import { hello } from '@repo/shared'
 
 router.get('/', async () => {
   return {
-    hello,
+    hello: hello,
   }
 })
