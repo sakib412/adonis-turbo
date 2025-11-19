@@ -1,5 +1,7 @@
-export const hello = 'world'
+export const squared = (n: number): number => n * n;
 
-export function greet(name?: string) {
-  return `Hello, ${name || 'stranger'}!`
+export const hello = "world";
+
+export function greet(name: string): string {
+  return `Hello, ${name}!`;
 }

@@ -44,6 +44,11 @@ WORKDIR /app
 # Copy only the built application's package.json for production deps
 COPY --from=pruned /app/out/json/ .
 
+# Copy only what's needed for built packages to work
+COPY --from=builder /app/packages/shared/dist/ ./packages/shared/dist/
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
+
+
 RUN corepack enable pnpm
 # Install ONLY production dependencies
 RUN pnpm install --prod --ignore-scripts
