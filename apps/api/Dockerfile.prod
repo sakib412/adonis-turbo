@@ -1,0 +1,73 @@
+# syntax=docker.io/docker/dockerfile:1
+FROM node:24-slim AS base
+
+ENV PNPM_HOME="/app/.pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+#################
+#     Pruned    #
+#################
+FROM base AS pruned
+
+# Set working directory
+WORKDIR /app
+RUN corepack enable pnpm && pnpm add -g turbo
+
+COPY . .
+RUN turbo prune api --docker
+
+#################
+# Builder stage #
+#################
+FROM base AS builder
+WORKDIR /app
+
+# First install dependencies (as they change less often)
+COPY --from=pruned /app/out/json/ .
+RUN corepack enable pnpm
+
+# Install ALL dependencies (including dev) for building
+RUN pnpm install
+
+# Copy full source code
+COPY --from=pruned /app/out/full/ .
+
+# Build using turbo, filtering for your AdonisJS app
+RUN pnpm build
+
+############################
+# Production dependencies  #
+############################
+FROM base AS production-deps
+WORKDIR /app
+
+# Copy only the built application's package.json for production deps
+COPY --from=pruned /app/out/json/ .
+
+RUN corepack enable pnpm
+# Install ONLY production dependencies
+RUN pnpm install --prod --ignore-scripts
+# Clean up pnpm cache to reduce size
+RUN pnpm store prune
+
+##################
+#  Runner stage  #
+##################
+FROM base AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Don't run production as root
+RUN addgroup --system --gid 1001 adonis
+RUN adduser --system --uid 1001 adonis
+
+USER adonis
+
+# Copy ONLY production node_modules from production-deps stage
+COPY --from=production-deps /app/ .
+# Copy built application from builder stage (the build directory)
+COPY --from=builder /app/apps/api/build/ ./apps/api/
+
+
+EXPOSE 3333
+CMD ["node", "apps/api/bin/server.js"]

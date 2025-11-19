@@ -9,10 +9,11 @@
 
 import router from '@adonisjs/core/services/router'
 
-import { hello } from '@repo/shared'
+import { greet, hello } from '@repo/shared'
 
 router.get('/', async () => {
   return {
     hello: hello,
+    greet: greet('AdonisJS User'),
   }
 })
